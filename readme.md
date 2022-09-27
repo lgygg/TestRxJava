@@ -34,8 +34,6 @@ dependencies {
 
 RxJava 提供了很多方法，创建被观察者对象Observable
 
-![创建被观察者](./pic/pic3.png)
-
 RxJava1.x中，Observeable用于订阅Observer和Subscriber。
 
 RxJava2.x中， Observeable用于订阅Observer ，是不支持背压的，而 Flowable用于订阅Subscriber ，是支持背压(Backpressure)的。
@@ -177,3 +175,186 @@ RxJava2.x中， Observeable用于订阅Observer ，是不支持背压的，而 F
  //Observable5返回的是Flowable，createObserver1返回的是Subscriber
 Observable5().subscribe(createObserver1());
 ```
+
+# 4.操作符
+
+### （1）创建操作符
+
+创建被观察者（Observable）对象&发送事件
+
+![创建被观察者](./pic/pic3.png)
+
+### （2）转换操作符
+### 
+变换被观察者(Observable)发送的事件。将Observable发送的数据按照一定的规则做一些变换，然后再将变换的数据发射出去。
+![转换操作符](./pic/pic4.png)
+### （3）合并操作符
+组合多个被观察者(Observable)&合并需要发送的事件。
+
+![合并操作符](./pic/pic5.png)
+### （4）功能操作符
+辅助被观察者(Observable) 发送事件时实现一些功能性需求，如错误处理，线程调度
+
+![功能操作符](./pic/pic6.png)
+
+### （5）过滤操作符
+用于将Observable发送的数据进行过滤和选择。让Observable返回我们所需要的数据。
+
+![过滤操作符](./pic/pic7.png)
+
+# 5.常用操作
+### （1）串行执行
+使用contact或contactArray来实现.
+
+contact和contactArray的区别是：
+***
+contact最多只能执行三个串行任务，而contactArray可以执行多个，并且contactArray是可以直接传入数组的
+***
+
+例子：
+```
+    private Observable testSerial(){
+        return Observable.concat(thread1(),thread2(),thread3())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+    }
+
+    private Observable thread1(){
+        return Observable.create(new ObservableOnSubscribe<String>() {
+            @Override
+            public void subscribe(ObservableEmitter<String> e) throws Exception {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0;i<5;i++) {
+                            Log.e(TAG,"Thread1:"+i);
+                            e.onNext("Thread1:"+i);
+                        }
+                        e.onComplete();
+                    }
+                }).start();
+            }
+        });
+
+    }
+    private Observable thread2(){
+        return Observable.create(new ObservableOnSubscribe<String>() {
+            @Override
+            public void subscribe(ObservableEmitter<String> e) throws Exception {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0;i<5;i++) {
+                            Log.e(TAG,"Thread2:"+i);
+                            e.onNext("Thread2:"+i);
+                        }
+                        e.onComplete();
+                    }
+                }).start();
+            }
+        });
+
+    }
+    private Observable thread3(){
+        return Observable.create(new ObservableOnSubscribe<String>() {
+            @Override
+            public void subscribe(ObservableEmitter<String> e) throws Exception {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0;i<5;i++) {
+                            Log.e(TAG," Thread3:"+i);
+                            e.onNext("Thread3:"+i);
+                        }
+                        e.onComplete();
+                    }
+                }).start();
+            }
+        });
+
+    }
+```
+
+### （2）串行传值
+
+```
+    private  void testSerialWithData(){
+        Observable.create(new ObservableOnSubscribe<Map<String,String>>() {
+                    @Override
+                    public void subscribe(ObservableEmitter<Map<String,String>> e) throws Exception {
+                        //onNext里的参数要和ObservableEmitter<Map<String,String>>以及ObservableOnSubscribe<Map<String,String>>匹配上，否则会报错
+                        Map<String,String> map = new HashMap<>();
+                        map.put("request1",request1());
+                        Log.e(TAG,"request1:"+map.toString());
+                        e.onNext(map);
+                        e.onComplete();
+                    }
+                })
+                .map(new Function<Map<String,String>, Map<String,String>>() {
+                    @Override
+                    public Map<String,String> apply(Map<String,String> s) throws Exception {
+                        Log.e(TAG,"request2:"+s.toString());
+                        s.put("request2",request2());
+                        return s;
+                    }
+                })
+                .map(new Function<Map<String,String>, Map<String,String>>() {
+                    @Override
+                    public Map<String,String> apply(Map<String,String> s) throws Exception {
+                        Log.e(TAG,"request3:"+s.toString());
+                        s.put("request3",request3());
+                        return s;
+                    }
+                })
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Observer<Map<String, String>>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+
+                    }
+
+                    @Override
+                    public void onNext(Map<String, String> stringStringMap) {
+                        Log.e(TAG,"request:"+stringStringMap.toString());
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.e(TAG,"request-onError:"+e.getMessage());
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.e(TAG,"request-onComplete:");
+                    }
+                });
+    }
+    private String request1(){
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return "request1";
+    }
+    private String request2(){
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return "request2";
+    }
+    private String request3(){
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return "request3";
+    }
+```
+
+# 6.测试源码
+[测试源码](https://github.com/lgygg/TestRxJava)
