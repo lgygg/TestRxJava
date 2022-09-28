@@ -197,6 +197,14 @@ Observable5().subscribe(createObserver1());
 
 ![功能操作符](./pic/pic6.png)
 
+注意：
+
+subscribeOn() 指定的就是发射事件的线程，observerOn 指定的就是订阅者接收事件的线程。
+
+多次指定发射事件的线程只有第一次指定的有效，也就是说多次调用 subscribeOn() 只有第一次的有效，其余的会被忽略。
+
+但多次指定订阅者接收线程是可以的，也就是说每调用一次 observerOn()，下游的线程就会切换一次
+
 ### （5）过滤操作符
 用于将Observable发送的数据进行过滤和选择。让Observable返回我们所需要的数据。
 
